@@ -1,17 +1,9 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
-const OpenAI = require('openai');
+const axios = require('axios');
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent // 👈 Needed to read message content
-  ]
-});
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
 client.once('ready', () => {
@@ -26,16 +18,16 @@ client.on('messageCreate', async (message) => {
   if (!userPrompt) return message.reply("Please provide a message after `!chat`.");
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+    const response = await axios.post('http://localhost:11434/v1/chat/completions', {
+      model: 'llama3',
       messages: [{ role: 'user', content: userPrompt }]
     });
 
-    const response = completion.choices[0].message.content;
-    message.reply(response);
+    const reply = response.data.choices[0].message.content;
+    message.reply(reply);
   } catch (error) {
-    console.error(error);
-    message.reply("⚠️ Error with OpenAI request.");
+    console.error('❌ Ollama error:', error.message || error);
+    message.reply("⚠️ Error with local model response.");
   }
 });
 
