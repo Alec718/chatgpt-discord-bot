@@ -1,8 +1,14 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
-const { OpenAI } = require('openai');
+const OpenAI = require('openai');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent // 👈 Needed to read message content
+  ]
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
