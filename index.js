@@ -1,10 +1,12 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
-const axios = require('axios');
+const fetch = require('node-fetch'); // Make sure to install this if you haven't: npm install node-fetch
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
+
+const OLLAMA_URL = 'http://localhost:11434/api/generate';
 
 client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
@@ -12,22 +14,45 @@ client.once('ready', () => {
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
-  if (!message.content.startsWith('!chat')) return;
 
-  const userPrompt = message.content.replace('!chat', '').trim();
-  if (!userPrompt) return message.reply("Please provide a message after `!chat`.");
+  let model = '';
+  let prompt = '';
+
+  if (message.content.startsWith('!chat')) {
+    model = 'llama3';
+    prompt = message.content.replace('!chat', '').trim();
+  } else if (message.content.startsWith('!code')) {
+    model = 'codellama';
+    prompt = message.content.replace('!code', '').trim();
+  } else {
+    return; // Ignore messages that don’t use the bot commands
+  }
+
+  if (!prompt) return message.reply("⚠️ Please provide a message after the command.");
 
   try {
-    const response = await axios.post('http://localhost:11434/v1/chat/completions', {
-      model: 'llama3',
-      messages: [{ role: 'user', content: userPrompt }]
+    const res = await fetch(OLLAMA_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        prompt,
+        stream: false
+      })
     });
 
-    const reply = response.data.choices[0].message.content;
-    message.reply(reply);
+    const data = await res.json();
+
+    if (data.error) {
+      console.error('Ollama Error:', data.error);
+      return message.reply("❌ Error from the local model.");
+    }
+
+    const responseText = data.response || "⚠️ No response from model.";
+    message.reply(responseText.substring(0, 2000)); // Discord max message length is 2000
   } catch (error) {
-    console.error('❌ Ollama error:', error.message || error);
-    message.reply("⚠️ Error with local model response.");
+    console.error(error);
+    message.reply("❌ An error occurred while contacting the local model.");
   }
 });
 
